@@ -1,65 +1,65 @@
-name: Deploy Node app on AWS Elastic Beanstalk
-
-env:
-  APP_NAME: hello
-  S3_BUCKET: hello-express-bucket
-  AWS_REGION: us-east-1
-  AWS_PLATFORM: Docker
-  PIPELINE_ID: ${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}
+name: hello-express
 
 on:
   push:
-    branches: [ main ]
+    branches:
+    - master
 
 jobs:
-  create_eb_version:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [10.x]
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Configure AWS credentials 
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      - run: |
-          AWS_VERSION_LABEL=${{env.APP_NAME}}-${{env.PIPELINE_ID}}
+    - uses: actions/checkout@v1
+    
+    - name: Cache node modules
+      uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+#
+    - name: Node ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
 
-          echo "Creating Source Bundle"
-          zip -r ${{env.APP_NAME}}.zip *
-          S3_KEY="$AWS_VERSION_LABEL.zip"
+    - name: Installing NPM
+      run: npm install
 
-          echo "Uploading Source Bundle to S3"
-          aws s3 cp ${{env.APP_NAME}}.zip s3://${{env.S3_BUCKET}}/${S3_KEY} --region ${{env.AWS_REGION}}
+    - name: Building application
+      run: npm run build
 
-          echo "Creating Elastic Beanstalk version"
-          aws elasticbeanstalk create-application-version --application-name ${{env.APP_NAME}} --version-label $AWS_VERSION_LABEL --region ${{env.AWS_REGION}} --source-bundle S3Bucket=${{env.S3_BUCKET}},S3Key=${S3_KEY} --auto-create-application
+    - name: Generate deployment package
+      run: zip -r deploy.zip * -x "**node_modules**"
 
-  deploy_aws:
-    needs: [create_eb_version]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.6 (needed for eb cli)
-        uses: actions/setup-python@v1
-        with:
-          python-version: "3.6"
-      - name: Configure AWS credentials 
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-id: ${{ secrets.AWS_ID }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      - run: |
-          AWS_VERSION_LABEL=${{env.APP_NAME}}-${{env.PIPELINE_ID}}
+    - name: Get timestamp
+      uses: gerred/actions/current-time@master
+      id: current-time
 
-          echo "Installing Elastic Beanstalk Cli"
-          python -m pip install --upgrade pip
-          pip install awsebcli --upgrade
-          eb --version
+    - name: Run string replace
+      uses: frabert/replace-string-action@master
+      id: format-time
+      with:
+        pattern: '[:\.]+'
+        string: "${{ steps.current-time.outputs.time }}"
+        replace-with: '-'
+        flags: 'g'
 
-          echo "Deploy init"
-          eb init -i ${{env.APP_NAME}} -p ${{env.AWS_PLATFORM}} -k ${{secrets.AWS_ID}} --region ${{env.AWS_REGION}}
-          eb deploy ${{env.APP_NAME}} --version ${AWS_VERSION_LABEL}
-          echo "Deploy finished"
+    - name: Beanstalk Deploy for app
+      uses: einaregilsson/beanstalk-deploy@v3
+      with:
+        aws_access_key: ${{secrets.AWS_ACCESS_KEY}}
+        aws_secret_key: ${{secrets.AWS_SECRET_KEY}}
+        application_name: "hello"
+        environment_name: "Hello-env"
+        region: "us-east-1"
+        version_label: "hello-${{ steps.format-time.outputs.replaced }}"
+        deployment_package: deploy.zip
+
+    - name: Deployed!
+      run: echo Hello deployed to ELB
