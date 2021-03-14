@@ -51,13 +51,13 @@ jobs:
         flags: 'g'
 
     - name: Beanstalk Deploy for app
-      uses: einaregilsson/beanstalk-deploy@v3
+      uses: einaregilsson/beanstalk-deploy@v16
       with:
-        aws_access_key: ${{secrets.AWS_ACCESS_KEY}}
-        aws_secret_key: ${{secrets.AWS_SECRET_KEY}}
-        application_name: "hello"
-        environment_name: "Hello-env"
-        region: "us-east-1"
+        aws_access_key: ${{secrets.AWS_ACCESS_KEY_ID}}
+        aws_secret_key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+        application_name: hello
+        environment_name: Hello-env
+        region: us-east-1
         version_label: "hello-${{ steps.format-time.outputs.replaced }}"
         deployment_package: deploy.zip
 
