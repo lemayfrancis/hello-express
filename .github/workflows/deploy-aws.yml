@@ -1,7 +1,7 @@
 name: Deploy Node app on AWS Elastic Beanstalk
 
 env:
-  APP_NAME: hello-express
+  APP_NAME: hello
   S3_BUCKET: hello-express-bucket
   AWS_REGION: us-east-1
   AWS_PLATFORM: Docker
