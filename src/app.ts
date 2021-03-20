@@ -1,6 +1,8 @@
-import express = require('express');
+import express from 'express';
 import logger from './logger';
+import dotenv from 'dotenv';
 
+dotenv.config();
 const app = express();
 const port = process.env.APP_PORT || 3000;
 

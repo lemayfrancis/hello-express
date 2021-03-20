@@ -5,12 +5,14 @@
   "main": "app.js",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node dist/app.js"
+    "start": "node dist/app.js",
+    "dev": "tsc && node -r dotenv/config dist/app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "winston": "^3.3.3",
     "winston-cloudwatch": "^2.5.0"
